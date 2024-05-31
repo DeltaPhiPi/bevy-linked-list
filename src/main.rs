@@ -111,7 +111,6 @@ impl ContainerBundle {
                     font_size: 1000.0,
                     color: *solarized::MAGENTA,
                     ..Default::default()
-                    // font,
                 }
             ),
             transform: Transform::from_scale(vec3(0.05, 0.05, 1.0)).with_translation(vec3(0.0, 0.0, 10.0)),
@@ -176,10 +175,7 @@ fn setup(
     window.decorations = false;
     window.resizable = false;
     glist_data.data.push(vec![100, 200, 300, 400, 500].into());
-    // glist_data.data.push(vec![1100, 1200, 1300, 1400, 1500].into());
-
     ContainerBundle::spawn_new(ListData { list_index: 0, index: 0 }, vec2(0.0, 0.0), &mut commands, &glist_data);
-    // ContainerBundle::spawn_new(ListData { list_index: 1, index: 0 }, vec2(0.0, 150.0), &mut commands, font.clone(), &glist_data);
 }
 
 
@@ -188,7 +184,6 @@ fn setup(
 #[derive(Resource)]
 struct MousePosition {
     current: Option<Vec2>,
-    // previous: Option<Vec2>,
     last_left_press: Option<Vec2>,
     drag: Vec2,
     translation: Vec2,
@@ -287,11 +282,10 @@ fn handle_drag(
 }
 
 
-fn update_cursor_position( // update position constantly
+fn update_cursor_position(
     q_windows: Query<&Window, With<PrimaryWindow>>,
     mut pos: ResMut<MousePosition>
 ) {
-    // pos.previous = pos.current;
     let w = q_windows.single();
     
     let p = q_windows.single().cursor_position();
