@@ -96,13 +96,17 @@ impl ContainerBundle {
     fn spawn_new(list_data: ListData, pos: Vec2, commands: &mut Commands, glist_data: &GlobalListData) {
         let mut increasing_button = Self::cross_button(0.25, Clickable::IncreaseValue);
         increasing_button.0.spatial.transform.translation = vec3(80.0,30.0,10.0);
+
         let mut decreasing_button = Self::minus_button(0.25, Clickable::DecreaseValue);
         decreasing_button.0.spatial.transform.translation = vec3(80.0,-30.0,10.0);
+
         let mut next_button = Self::arrow_button(0.25, Clickable::Next);
         next_button.0.spatial.transform.translation = vec3(80.0,5.0,10.0);
+
         let mut previous_button = Self::arrow_button(0.25, Clickable::Previous);
         previous_button.0.spatial.transform.translation = vec3(-80.0,5.0,10.0);
         previous_button.0.spatial.transform.rotation = Quat::from_axis_angle(Vec3::Z, std::f32::consts::PI);
+
         let container = Self::rect();
         let text = Text2dBundle {
             text: Text::from_section(
@@ -134,9 +138,8 @@ impl ContainerBundle {
 fn update_container_values(q: Query<(&ListData, &Children)>, mut q2: Query<&mut Text>, glist_data: Res<GlobalListData>) {
     for (data, children) in q.iter() {
         for child in children.iter() {
-            if let Ok(mut t) = q2.get_mut(*child) {
-                t.sections[0].value = glist_data.data[data.list_index][data.index].to_string();
-            }
+            let Ok(mut t) = q2.get_mut(*child) else {continue};
+            t.sections[0].value = glist_data.data[data.list_index][data.index].to_string();
         }
     }
 
@@ -175,7 +178,9 @@ fn setup(
     window.decorations = false;
     window.resizable = false;
     glist_data.data.push(vec![100, 200, 300, 400, 500].into());
+    glist_data.data.push(vec![100, 200, 300, 400, 500].into());
     ContainerBundle::spawn_new(ListData { list_index: 0, index: 0 }, vec2(0.0, 0.0), &mut commands, &glist_data);
+    ContainerBundle::spawn_new(ListData { list_index: 0, index: 0 }, vec2(0.0, -150.0), &mut commands, &glist_data);
 }
 
 
@@ -195,10 +200,8 @@ struct MousePosition {
 #[derive(Component)]
 struct BoundingBox(Vec2);
 
-
 #[derive(Event)]
 struct Click(Vec2);
-
 
 fn change_button_color_when_pushable(
     q: Query<(&ListData, Entity)>, 
@@ -241,40 +244,33 @@ fn handle_clicks(
             let final_pos = (gtrans.translation()).xy();
             let p = *pos - final_pos;
             let bbox = *bbox * 0.5;
-            if p.x.abs() < bbox.x && p.y.abs() < bbox.y {
-                match clickable {
-                    Clickable::IncreaseValue | Clickable::DecreaseValue => {
-                        let Ok(data) = par.get_mut(**parent) else {continue};
-                        glist_data.data[data.list_index][data.index] += match clickable {
-                            Clickable::IncreaseValue => 1,
-                            Clickable::DecreaseValue => -1,
-                            _ => unreachable!()
-                        };
-                    },
-                    Clickable::Next => {
-                        let Ok(mut data) = par.get_mut(**parent) else {continue};
-                        if data.index == glist_data.data[data.list_index].len() - 1 {
-                            glist_data.data[data.list_index].push_back(rand::thread_rng().gen_range(0..=10));
-                        }
-                        data.index += 1;
-                    },
-                    Clickable::Previous => {
-                        let Ok(mut data) = par.get_mut(**parent) else {continue};
-                        if data.index == 0 {
-                            glist_data.data[data.list_index].push_front(rand::thread_rng().gen_range(0..=10));
-                        }
-                        else {data.index -= 1};
+            if !(p.x.abs() < bbox.x && p.y.abs() < bbox.y) {continue};
+            let Ok(mut data) = par.get_mut(**parent) else {continue};
+            match clickable {
+                Clickable::IncreaseValue  => {
+                    glist_data.data[data.list_index][data.index] += 1;
+                },
+                Clickable::DecreaseValue => {
+                    glist_data.data[data.list_index][data.index] -= 1;
+                },
+                Clickable::Next => {
+                    if data.index == glist_data.data[data.list_index].len() - 1 {
+                        glist_data.data[data.list_index].push_back(rand::thread_rng().gen_range(0..=10));
                     }
+                    data.index += 1;
+                },
+                Clickable::Previous => {
+                    if data.index == 0 {
+                        glist_data.data[data.list_index].push_front(rand::thread_rng().gen_range(0..=10));
+                    }
+                    else {data.index -= 1};
                 }
             }
         }
     }
 }
 
-fn handle_drag(
-    pos: Res<MousePosition>,
-    mut camera: Query<&mut Transform, With<Camera>>,
-) {
+fn handle_drag(pos: Res<MousePosition>, mut camera: Query<&mut Transform, With<Camera>>) {
     let mut camera = camera.single_mut();
     *camera = Transform::default()
             .with_translation(pos.drag.extend(0.0) + pos.translation.extend(0.0))
@@ -282,12 +278,8 @@ fn handle_drag(
 }
 
 
-fn update_cursor_position(
-    q_windows: Query<&Window, With<PrimaryWindow>>,
-    mut pos: ResMut<MousePosition>
-) {
+fn update_cursor_position(q_windows: Query<&Window, With<PrimaryWindow>>, mut pos: ResMut<MousePosition>) {
     let w = q_windows.single();
-    
     let p = q_windows.single().cursor_position();
     pos.current = p.map(|p| vec2(p.x - w.width()/2.0, -p.y + w.height()/2.0));
 }
@@ -314,7 +306,7 @@ fn mouse_input(
         pos.drag = Vec2::ZERO;
     }
     for ev in wheel.read() {
-        pos.zoom *= 0.95f32.powf(ev.y);
-        pos.zoom = pos.zoom.clamp(0.001, 25.0);
+        pos.zoom *= 0.9375f32.powf(ev.y);
+        pos.zoom = pos.zoom.clamp(0.005, 25.0);
     }
 }
